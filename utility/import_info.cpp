@@ -928,7 +928,7 @@ Error ImportInfov2::_load(const String &p_path) {
 		auto_converted_export = true;
 		source_file = source_file.is_empty() ? p_path.get_basename().trim_suffix(".converted") + ".gd" : source_file;
 		importer = "script_bytecode";
-	} else if (source_file.is_empty() && !p_path.contains(".converted.")) {
+	} else if (source_file.is_empty() && !p_path.contains(".converted.") && !p_path.contains(".optimized.")) {
 		String base_dir = "res://.assets";
 		String new_ext = get_new_ext(old_ext);
 		if (type == "AtlasTexture") {
@@ -943,6 +943,11 @@ Error ImportInfov2::_load(const String &p_path) {
 			// if this doesn't match "filename.ext.converted.newext"
 			String base = spl[0];
 			String ext = spl.size() != 4 ? get_new_ext(old_ext) : spl[1];
+			if (p_path.contains(".optimized.")) {
+				if (old_ext == "scn") {
+					ext = "xml";
+				}
+			}
 			source_file = p_path.get_base_dir().path_join(base + "." + ext);
 		}
 		if (!res_info->get_type().to_lower().contains("texture") && !res_info->get_type().to_lower().contains("sample")) {
