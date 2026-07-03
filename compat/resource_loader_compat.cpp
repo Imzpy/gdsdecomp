@@ -545,7 +545,12 @@ String ResourceCompatLoader::resource_to_string(const String &p_path, bool p_ski
 
 	String save_path;
 	String base_ext = path.get_basename().get_basename().get_extension();
-	if (path.contains(".converted.") && (base_ext == "xml" || base_ext == "x" + path.get_extension().to_lower())) {
+	bool optimized = path.contains(".optimized.");
+	bool optimized_or_converted = optimized || path.contains(".converted.");
+	if (optimized && path.has_extension("scn")) {
+		base_ext = "xml";
+	}
+	if (optimized_or_converted && (base_ext == "xml" || base_ext == "x" + path.get_extension().to_lower())) {
 		ResourceFormatSaverXMLInstance saver;
 		save_path = path.get_basename() + ".xml";
 		err = saver.save_to_file(f, save_path, res, 0);
