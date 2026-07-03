@@ -11,10 +11,10 @@ class GDREMainLoop : public Object {
 	static GDREMainLoop *singleton;
 	static bool testing;
 
-	double last_physics_process_time;
-	double last_process_time;
-	bool processing;
-	bool running_process_calls;
+	double last_physics_process_time = 0.0;
+	double last_process_time = 0.0;
+	bool processing = false;
+	bool running_process_calls = false;
 	Mutex next_process_calls_mutex;
 	Vector<Callable> next_process_calls;
 
