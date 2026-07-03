@@ -40,6 +40,7 @@ BRANCHES_TO_MERGE=(
 	fix-v3-meshes
 	fix-clearcoat-gloss
 	gltf-mutex-all-document-extensions
+	gltf-node-weights
 )
 
 # set fail on error
