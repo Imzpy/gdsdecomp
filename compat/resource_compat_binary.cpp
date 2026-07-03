@@ -2117,21 +2117,20 @@ void ResourceFormatSaverCompatBinaryInstance::write_variant(Ref<FileAccess> f, c
 		} break;
 		case Variant::OBJECT: {
 			// This will only be triggered on godot 2.x, where the image variant is loaded as an image object vs. a resource
-			if (ver_format <= 1) {
-				Ref<Resource> resp = p_property;
-				if (resp->is_class("Image")) {
+			Ref<Resource> res = p_property;
+			if (ver_format <= 1 && res.is_valid()) {
+				if (res->is_class("Image")) {
 					f->store_32(VARIANT_IMAGE);
 					// storing lossless compressed by default
 					ImageParserV2::write_image_v2_to_bin(f, p_property, true);
 					break;
-				} else if (resp->is_class("InputEvent")) {
+				} else if (res->is_class("InputEvent")) {
 					// these should never be saved to binary; just store the type
 					f->store_32(VARIANT_INPUT_EVENT);
 					break;
 				}
 			}
 			f->store_32(VARIANT_OBJECT);
-			Ref<Resource> res = p_property;
 			if (res.is_null() || res->get_meta(SNAME("_skip_save_"), false)) {
 				f->store_32(OBJECT_EMPTY);
 				return; // Don't save it.
