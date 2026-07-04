@@ -547,7 +547,7 @@ public class GodotModuleDecompiler
 			.Where(p => p.GetAttributes().Any(a => a.AttributeType.Name == "ExportAttribute")).ToList();
 		var fields = typeDef.Fields.Where(p => p.GetAttributes().Any(a => a.AttributeType.Name.Contains("Export")))
 			.ToList();
-		var signals = GodotStuff.GetSignalsInClass(typeDef);
+		var signals = GodotStuff.GetSignalDelegatesInClass(typeDef);
 		var syntaxTree = decompiler.DecompileTypes([type]);
 		var isTool = typeDef.GetAttributes().FirstOrDefault(a => a.AttributeType.Name == "ToolAttribute") != null;
 
@@ -618,7 +618,7 @@ public class GodotModuleDecompiler
 				args = invokeMethod.Parameters.Select(p => p.Name).ToArray();
 				argTypes = invokeMethod.Parameters.Select(p => p.Type.Name).ToArray();
 			}
-			signalsInfo.Add(new MethodInfo(signal.Name, "void", args, argTypes, false, false, false));
+			signalsInfo.Add(new MethodInfo(signal.Name.Substring(0, signal.Name.Length - GodotStuff.SIGNAL_DELEGATE_SUFFIX.Length), "void", args, argTypes, false, false, false));
 		}
 
 		foreach (var method in typeDef.Methods)

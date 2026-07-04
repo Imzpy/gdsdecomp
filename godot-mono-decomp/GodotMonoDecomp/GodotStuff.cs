@@ -229,6 +229,10 @@ public class RemoveGodotScriptPathAttribute : IAstTransform
 public static class GodotStuff
 {
 	public const string BACKING_FIELD_PREFIX = "backing_";
+	public const string EMIT_SIGNAL_METHOD_PREFIX = "EmitSignal";
+
+	// While signal delegates are user-defined, Godot source generators require them to have this suffix.
+	public const string SIGNAL_DELEGATE_SUFFIX = "EventHandler";
 
 	public static DotNetCoreDepInfo? GetGodotSharpPackageDep(DotNetCoreDepInfo? depInfo)
 	{
@@ -344,7 +348,7 @@ public static class GodotStuff
 		bool useNestedDirectoriesForNamespaces,
 		ISet<TypeDefinitionHandle>? godotClassHandles = null)
 	{
-		var fileMap = new Dictionary<string, List<TypeDefinitionHandle>>(StringComparer.OrdinalIgnoreCase);
+		Dictionary<string, List<TypeDefinitionHandle>> fileMap = new Dictionary<string, List<TypeDefinitionHandle>>(StringComparer.OrdinalIgnoreCase);
 		godotClassHandles ??= new HashSet<TypeDefinitionHandle>();
 		var canonicalPaths = new HashSet<string>();
 		var canonicalHandles = new HashSet<TypeDefinitionHandle>();
@@ -988,23 +992,10 @@ public static class GodotStuff
 
 	public static bool IsSignalDelegate(IEntity entity)
 	{
-		var attributes = entity.GetAttributes();
-
-		// check if any of the attributes are "Signal"
-		if (attributes.Any(a => a.AttributeType.FullName == "Godot.SignalAttribute"))
-		{
-			return true;
-		}
-
-		if (attributes.Any(a => a.AttributeType.Name == "SignalAttribute"))
-		{
-			return true;
-		}
-
-		return false;
+		return entity.GetAttributes().Any(a => a.AttributeType.FullName == "Godot.SignalAttribute");
 	}
 
-	public static IEnumerable<IType> GetSignalsInClass(ITypeDefinition entity)
+	public static IEnumerable<IType> GetSignalDelegatesInClass(ITypeDefinition entity)
 	{
 		return entity.NestedTypes.Where(IsSignalDelegate);
 	}
@@ -1014,7 +1005,7 @@ public static class GodotStuff
 		if (entity is IField field)
 		{
 			return field.Name.StartsWith(BACKING_FIELD_PREFIX) && field.DeclaringTypeDefinition != null &&
-			       GetSignalsInClass(field.DeclaringTypeDefinition).Contains(field.Type.GetDefinition());
+			       GetSignalDelegatesInClass(field.DeclaringTypeDefinition).Contains(field.Type.GetDefinition());
 		}
 
 		return false;
@@ -1140,13 +1131,17 @@ public static class GodotStuff
 					return true;
 				}
 
-				// TODO: fix this to check if the method ends with a signal name
 				// if the method name is EmitSignal<SignalName> and it's a protected or private void method, then it's an auto-generated signal emitter
 				if (
-					method is { IsVirtual: false, Accessibility: Accessibility.Internal or Accessibility.Protected or Accessibility.ProtectedOrInternal or Accessibility.ProtectedAndInternal or Accessibility.Private } &&
-					method.Name.StartsWith("EmitSignal") && method.ReturnType.FullName == "System.Void")
+					method is { IsVirtual: false, Accessibility: not (Accessibility.Public or Accessibility.None) } &&
+					method.Name.StartsWith(EMIT_SIGNAL_METHOD_PREFIX) && method.ReturnType.FullName == "System.Void" && method.DeclaringTypeDefinition != null)
 				{
-					return true;
+					var strippedName = method.Name.Substring(EMIT_SIGNAL_METHOD_PREFIX.Length);
+					if (GetSignalDelegatesInClass(method.DeclaringTypeDefinition).Any(d => d.Name == strippedName + SIGNAL_DELEGATE_SUFFIX))
+					{
+						return true;
+					}
+					return false;
 				}
 
 				// auto-generated getter methods for properties of parent classes
@@ -1154,7 +1149,7 @@ public static class GodotStuff
 
 				break;
 			case IEvent @event:
-				if (@event.DeclaringTypeDefinition != null && GetSignalsInClass(@event.DeclaringTypeDefinition).Contains(@event.ReturnType.GetDefinition()) &&
+				if (@event.DeclaringTypeDefinition != null && GetSignalDelegatesInClass(@event.DeclaringTypeDefinition).Contains(@event.ReturnType.GetDefinition()) &&
 				    GetBackingSignalDelegateFieldNames(@event.DeclaringTypeDefinition)
 					    .Contains(BACKING_FIELD_PREFIX + @event.Name))
 				{
