@@ -22,7 +22,6 @@ config/icon="res://gdre_icon.png"
 
 [display]
 
-display_server/driver.linuxbsd="wayland"
 window/subwindows/embed_subwindows=false
 window/size/width=1200
 window/size/height=1024
