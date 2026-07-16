@@ -2,6 +2,10 @@
 #include "core/templates/hash_set.h"
 #include "core/variant/variant.h"
 
+#if defined(WAYLAND_ENABLED)
+#include "core/os/os.h"
+#endif
+
 #include "modules/gdsdecomp/utility/gdre_version.gen.h"
 
 namespace gdre {
@@ -22,6 +26,41 @@ static const HashSet<String> main_commands = {
 
 static void print_version() {
 	print_line("Godot RE Tools " + String(GDRE_VERSION));
+}
+
+static void remove_flag(List<String> *args, const String &flag, bool has_value = false) {
+	for (List<String>::Element *E = args->front(); E; E = E->next()) {
+		auto arg_and_value = E->get().split("=", true, 1);
+		if (arg_and_value[0] == flag) {
+			// if the flag has a value, get the next element and remove it
+			if (has_value && arg_and_value.size() == 1 && E->next()) {
+				args->erase(E->next());
+			}
+			args->erase(E);
+			break;
+		}
+	}
+}
+
+static void insert_flag_at_front(List<String> *args, const String &flag, const String &value = "") {
+	for (List<String>::Element *E = args->front(); E; E = E->next()) {
+		if (E->get().begins_with("-")) {
+			auto inserted = args->insert_before(E, flag);
+			if (!value.is_empty()) {
+				args->insert_after(inserted, value);
+			}
+			break;
+		}
+	}
+}
+
+static void add_wayland_args(List<String> *args) {
+#if defined(WAYLAND_ENABLED)
+	if (!OS::get_singleton()->get_environment("WAYLAND_DISPLAY").is_empty()) {
+		remove_flag(args, "--display-driver", true);
+		insert_flag_at_front(args, "--display-driver", "wayland");
+	}
+#endif
 }
 
 // returns true if we should quit the program immediately
@@ -74,6 +113,7 @@ static bool modify_cli_args(List<String> *args, List<String> *user_args) {
 			break;
 		}
 	}
+	add_wayland_args(args);
 	return false;
 }
 } //namespace gdre
